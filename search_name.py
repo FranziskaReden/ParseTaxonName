@@ -264,6 +264,9 @@ def get_taxids(args):
             results.append(result[1])
             tax_ids.append(int(result[0]))
 
+            if not args.quiet: 
+                print(result[1])
+
     # Final checkpoint save
     utils.write_checkpoint(output_files, results, failed, len(results), mode = False, quiet=args.quiet)
     searcher.taxa_name_dict.clear()

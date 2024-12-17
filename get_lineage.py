@@ -5,7 +5,7 @@ from tqdm import tqdm
 import os
 import utils
 
-def search_nodes(tax_id:int, nodes_df:pd.DataFrame, mode:str) -> pd.DataFrame: 
+def search_nodes(tax_id:int, nodes_df:pd.DataFrame, minimal_ranks:list, mode:str) -> pd.DataFrame: 
     current_tax = tax_id
 
     lineage = []
@@ -18,9 +18,9 @@ def search_nodes(tax_id:int, nodes_df:pd.DataFrame, mode:str) -> pd.DataFrame:
 
         if mode == 'full': 
             lineage.append(node)
-        elif mode == 'reduced' and nodes_df['rank'][current_tax] not in ['no rank', 'clade']: 
+        elif mode == 'reduced' and nodes_df.at[current_tax, 'rank'] not in ['no rank', 'clade']: 
             lineage.append(node)
-        elif mode == 'minimal' and nodes_df.at['rank'][current_tax] in minimal_ranks: 
+        elif mode == 'minimal' and nodes_df.at[current_tax, 'rank'] in minimal_ranks: 
             lineage.append(node)
 
         if current_tax == 1: 
@@ -36,7 +36,6 @@ def search_nodes(tax_id:int, nodes_df:pd.DataFrame, mode:str) -> pd.DataFrame:
     return lineage
 
 def get_lineage(args): 
-    global minimal_ranks
 
     # Setup
     nodes_df = ncbi_tax.get_nodes()
@@ -58,7 +57,7 @@ def get_lineage(args):
         print(f'\n{now}: Retrieving lineages ({args.lineage})....')
 
         for tax_id in tqdm(tax_ids, disable=not args.quiet): 
-            lineage = search_nodes(tax_id, nodes_df, args.lineage)
+            lineage = search_nodes(tax_id, nodes_df, minimal_ranks, args.lineage)
 
             line = str(tax_id)+'\t'
             for lin in lineage: 
