@@ -1,0 +1,4 @@
+name	tax_id	name_txt	name_class	strict_score	relaxed_score	reduced_name	min_name	time(s)
+Homo sapiens	9606	Homo sapiens	scientific name	100	0	None	None	0.00016
+Drosophila sp	7242	Drosophila sp.	includes	96	96	None	None	0.03541
+Mus muskulus	10090	Mus musculus	scientific name	92	92	Mus muskulus	Mus	0.09495
