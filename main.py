@@ -67,7 +67,7 @@ and/or to retrieve the lineage of said/a taxon ID.**')
         #          \nNothing to do... Use the --redo flag should you wish to rerun the analysis, which will overwrite the results file.')
         #else:  
         #    search_name.get_taxids(args)
-        search_name_old_old.get_taxids(args)
+        search_name.get_taxids(args)
 
     elif os.path.isfile(args.prefix+'lineage.tsv') and args.redo is False: 
         print('Output file '+args.prefix+'_lineage.tsv detetced. Nothing to do... \
