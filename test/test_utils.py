@@ -55,15 +55,19 @@ class TestUtils(unittest.TestCase):
         word = 'mu uncultured eukaryote SLV 3GJ1 11 KT072099'
         word_less = 'mu uncultured eukaryote SLV 3GJ1 11'
         self.assertEqual(utils.shave_name(word), word_less)
+
         word = 'mu uncultured eukaryote SLV 3GJ1 11'
         word_less = 'mu uncultured eukaryote SLV 3GJ1'
         self.assertEqual(utils.shave_name(word), word_less)
+
         word = 'mu uncultured eukaryote SLV 3GJ1'
         word_less = 'mu uncultured eukaryote SLV'
         self.assertEqual(utils.shave_name(word), word_less)
+
         word = 'mu uncultured eukaryote SLV'
         word_less = 'mu uncultured eukaryote'
         self.assertEqual(utils.shave_name(word), word_less)
+        
         word = 'mu uncultured'
         word_less = None
         self.assertEqual(utils.shave_name(word), word_less)

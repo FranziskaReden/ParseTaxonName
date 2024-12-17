@@ -5,7 +5,7 @@ import sys
 import pandas as pd
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-import search_name_clean as sn
+import search_name as sn
 import ncbi_tax, utils
 
 class TestGetTaxa(unittest.TestCase): 
