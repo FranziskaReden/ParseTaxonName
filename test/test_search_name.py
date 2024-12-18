@@ -9,7 +9,6 @@ import search_name as sn
 import ncbi_tax, utils
 
 class TestGetTaxa(unittest.TestCase): 
-    @patch('ncbi_tax.folder', f'{os.path.join(os.environ.get("HOME"), ".ncbi_tax")}')
 
     def test_query_class(self): 
         
@@ -28,7 +27,9 @@ class TestGetTaxa(unittest.TestCase):
 
     def test_initialization(self): 
 
-        taxa_df, list_index = ncbi_tax.get_taxa()
+        folder = f'{os.path.join(os.environ.get("HOME"), ".ncbi_tax")}'
+
+        taxa_df, list_index = ncbi_tax.get_taxa(folder)
         taxa_name_dict = dict(zip(taxa_df['name_txt'].values, taxa_df.index))
         score = 95
         mode = 'lenient'

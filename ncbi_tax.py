@@ -163,9 +163,7 @@ def get_taxa(folder:str) -> list:
 
     return taxa, list_index
 
-def get_nodes(folder_name:str) -> pd.DataFrame: 
-
-    folder = folder_name
+def get_nodes(folder:str) -> pd.DataFrame: 
 
     if os.path.exists(os.path.join(folder, 'nodes.tsv')) is False: 
         taxa, list_index = get_taxa(folder)
