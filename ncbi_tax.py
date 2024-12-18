@@ -10,10 +10,9 @@ from datetime import datetime
 
 import utils
 
-global folder
-folder = f'{os.path.join(os.environ.get("HOME"), ".ncbi_tax")}'
+def sort_taxa_names(folder:pathlib.Path) -> pd.DataFrame: 
 
-def sort_taxa_names(file_name:pathlib.Path) -> pd.DataFrame: 
+    file_name = os.path.join(os.path.join(folder, 'taxdmp'), 'names.dmp')
 
     print('Reading in file '+str(file_name)+'...')
     # Read in file line after line
@@ -34,11 +33,11 @@ def sort_taxa_names(file_name:pathlib.Path) -> pd.DataFrame:
     # Transform sorted list of lists into DataFrame and write 
     taxa_df = pd.DataFrame(taxa, columns=header)
     taxa_df.to_csv(os.path.join(folder, 'taxa_names_sorted.tsv'), sep='\t', index=False)
-    print('The DataFrame containing the sorted taxon names and taxon IDs were written into file: taxa_names_sorted.tsv\n')
+    print(f'The DataFrame containing the sorted taxon names and taxon IDs were written into file: {os.path.join(folder, 'taxa_names_sorted.tsv')}.\n')
 
     return taxa_df
 
-def get_indeces(taxa:pd.DataFrame) -> dict:
+def get_indeces(folder:pathlib.Path, taxa:pd.DataFrame) -> dict:
     
     print('Creating lexicon for taxa names DataFrame...')
     # Create dictionary that will store the starting and ending indices for each letter in the alphabet
@@ -90,7 +89,9 @@ def read_indices(file:pathlib.Path) -> dict:
 
     return list_index
 
-def get_nodes_file(nodes_file:pathlib.Path, names:pd.DataFrame) -> pd.DataFrame: 
+def get_nodes_file(folder:pathlib.Path, names:pd.DataFrame) -> pd.DataFrame: 
+
+    nodes_file = os.path.join(os.path.join(folder, 'taxdmp'), 'nodes.dmp')
 
     print('Reading in file '+str(nodes_file)+'...')
     # Read in file line after line
@@ -121,7 +122,7 @@ def get_nodes_file(nodes_file:pathlib.Path, names:pd.DataFrame) -> pd.DataFrame:
 
     return nodes_df
 
-def get_dumpfile(timeout=540): 
+def get_dumpfile(folder, timeout=540): 
 
     print('Downloading taxdmp.zip file from the NCBI taxonomy database...\n')
     url = 'https://ftp.ncbi.nih.gov/pub/taxonomy/taxdmp.zip'
@@ -140,21 +141,21 @@ def get_dumpfile(timeout=540):
     with open(os.path.join(folder, 'update.log'), 'a') as w: 
         w.write(f'NCBI taxonomy last downloaded and updated on: {date}.')
 
-def get_taxa() -> list: 
+def get_taxa(folder:str) -> list: 
 
     if os.path.isdir(folder) is False: 
         os.mkdir(folder)
 
     if os.path.exists(os.path.join(folder, 'taxdmp.zip')) is False: 
-        get_dumpfile()  
+        get_dumpfile(folder)  
 
     if os.path.exists(os.path.join(folder, 'taxdmp')) is False: 
         shutil.unpack_archive(filename=os.path.join(folder, 'taxdmp.zip'), extract_dir=os.path.join(folder, 'taxdmp'))
 
     if os.path.exists(os.path.join(folder,'taxa_names_sorted.tsv')) is False: 
         # Sort taxa names; get indices to create lexicon.
-        taxa = sort_taxa_names(os.path.join(os.path.join(folder, 'taxdmp'), 'names.dmp'))
-        list_index = get_indeces(taxa)
+        taxa = sort_taxa_names(folder)
+        list_index = get_indeces(folder, taxa)
     else: 
         print('Reading in '+os.path.join(folder, 'taxa_names_sorted.tsv')+' file...')
         taxa = pd.read_csv(os.path.join(folder, 'taxa_names_sorted.tsv'), sep='\t')
@@ -162,11 +163,13 @@ def get_taxa() -> list:
 
     return taxa, list_index
 
-def get_nodes() -> pd.DataFrame: 
+def get_nodes(folder_name:str) -> pd.DataFrame: 
+
+    folder = folder_name
 
     if os.path.exists(os.path.join(folder, 'nodes.tsv')) is False: 
-        taxa, list_index = get_taxa()
-        nodes_df = get_nodes_file(os.path.join(os.path.join(folder, 'taxdmp'), 'nodes.dmp'), taxa[taxa['name class'] == 'scientific name'])
+        taxa, list_index = get_taxa(folder)
+        nodes_df = get_nodes_file(folder, taxa[taxa['name class'] == 'scientific name'])
     else: 
         print('Reading in '+os.path.join(folder, 'nodes.tsv')+' file...')
         nodes_df = pd.read_csv(os.path.join(folder, 'nodes.tsv'), sep='\t')
@@ -174,3 +177,14 @@ def get_nodes() -> pd.DataFrame:
     nodes_df = nodes_df.set_index('tax_id')
 
     return nodes_df
+
+def update_db(folder): 
+
+    if os.path.isdir(folder) is False: 
+        os.mkdir(folder)
+
+    get_dumpfile(folder) 
+    shutil.unpack_archive(filename=os.path.join(folder, 'taxdmp.zip'), extract_dir=os.path.join(folder, 'taxdmp'))
+    taxa = sort_taxa_names(folder)
+    list_index = get_indeces(folder, taxa)
+    nodes_df = get_nodes_file(folder, taxa[taxa['name class'] == 'scientific name'])

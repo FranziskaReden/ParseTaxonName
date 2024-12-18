@@ -1,6 +1,7 @@
 import pandas as pd
 import search_name
 import get_lineage
+import ncbi_tax
 import argparse
 import pathlib
 import os
@@ -42,6 +43,9 @@ and/or to retrieve the lineage of said/a taxon ID.**')
     parser.add_argument('-q', '--quiet', default=False, action = 'store_true', help='Quiet mode, will output minimal information on your screen.')
     parser.add_argument('--cores', default=1, action='store', type=int, help='For parallellized searching. Declares the number of cores to us. \
                         Default is 1.')
+    parser.add_argument('-db', default=f'{os.path.join(os.environ.get("HOME"), ".ncbi_tax")}', action='store', help='Path to and name of the folder in which to write/find the NCBI taxonomy database. \
+                        Default is the older ".ncbi_tax" in the home directory of the current user.')
+    parser.add_argument('--update', default=False, action='store_true', help='Will update NCBI taxonomy database (will be downloaded).')
     args = parser.parse_args()
 
     if args.score > 100 or args.score < 60: 
@@ -59,6 +63,9 @@ and/or to retrieve the lineage of said/a taxon ID.**')
         args.prefix = str(args.name_file) + '_'
     elif args.tax_id_file:
         args.prefix = str(args.tax_id_file) + '_'
+
+    if args.update is True: 
+        ncbi_tax.update_db(args.db)
 
     if args.taxon_name or args.ali_file or args.name_file: 
 

@@ -40,7 +40,7 @@ def search_nodes(tax_id:int, nodes_df:pd.DataFrame, ranks:list, mode:str) -> pd.
 def get_lineage(args): 
 
     # Setup
-    nodes_df = ncbi_tax.get_nodes()
+    nodes_df = ncbi_tax.get_nodes(args.db)
     output_file = args.prefix+'lineage.tsv'
     reduced_ranks = ['superkingdom', 'genus', 'species', 'order', 'family',
        'subspecies', 'subfamily', 'strain', 'serogroup', 'tribe',

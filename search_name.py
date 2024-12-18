@@ -220,7 +220,7 @@ def process_name(args):
         return None, query.original
 
 def get_taxids(args):
-    taxa_df, list_index = ncbi_tax.get_taxa()
+    taxa_df, list_index = ncbi_tax.get_taxa(args.db)
     taxa_name_dict = dict(zip(taxa_df['name_txt'].values, taxa_df.index))
 
     TaxonomySearcher.initialize(taxa_df, list_index, taxa_name_dict, args.score)
