@@ -5,7 +5,9 @@ from tqdm import tqdm
 import os
 import utils
 
-def search_nodes(tax_id:int, nodes_df:pd.DataFrame, minimal_ranks:list, mode:str) -> pd.DataFrame: 
+def search_nodes(tax_id:int, nodes_df:pd.DataFrame, ranks:list, mode:str) -> pd.DataFrame: 
+
+    reduced_ranks, minimal_ranks = ranks
     current_tax = tax_id
 
     lineage = []
@@ -18,9 +20,9 @@ def search_nodes(tax_id:int, nodes_df:pd.DataFrame, minimal_ranks:list, mode:str
 
         if mode == 'full': 
             lineage.append(node)
-        elif mode == 'reduced' and nodes_df.at[current_tax, 'rank'] not in ['no rank', 'clade']: 
+        elif mode == 'reduced' and nodes_df.at[current_tax, 'rank'] in reduced_ranks or current_tax == 1: 
             lineage.append(node)
-        elif mode == 'minimal' and nodes_df.at[current_tax, 'rank'] in minimal_ranks: 
+        elif mode == 'minimal' and nodes_df.at[current_tax, 'rank'] in minimal_ranks or current_tax == 1: 
             lineage.append(node)
 
         if current_tax == 1: 
@@ -40,6 +42,14 @@ def get_lineage(args):
     # Setup
     nodes_df = ncbi_tax.get_nodes()
     output_file = args.prefix+'lineage.tsv'
+    reduced_ranks = ['superkingdom', 'genus', 'species', 'order', 'family',
+       'subspecies', 'subfamily', 'strain', 'serogroup', 'tribe',
+       'phylum', 'class', 'species group', 'forma', 'subphylum',
+       'suborder', 'subclass', 'varietas', 'kingdom', 'forma specialis',
+       'isolate', 'superfamily', 'infraorder', 'infraclass', 'superorder',
+       'subgenus', 'superclass', 'parvorder', 'serotype',
+       'species subgroup', 'subcohort', 'cohort', 'subtribe', 'section',
+       'series', 'subkingdom', 'superphylum', 'subsection']
     minimal_ranks = ['species', 'genus', 'family', 'order', 'class', 'phylum', 'kingdom', 'superkingdom']
 
     if args.tax_id: 
@@ -57,7 +67,7 @@ def get_lineage(args):
         print(f'\n{now}: Retrieving lineages ({args.lineage})....')
 
         for tax_id in tqdm(tax_ids, disable=not args.quiet): 
-            lineage = search_nodes(tax_id, nodes_df, minimal_ranks, args.lineage)
+            lineage = search_nodes(tax_id, nodes_df, [reduced_ranks, minimal_ranks], args.lineage)
 
             line = str(tax_id)+'\t'
             for lin in lineage: 

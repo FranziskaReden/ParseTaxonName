@@ -39,7 +39,7 @@ and/or to retrieve the lineage of said/a taxon ID.**')
     parser.add_argument('--prefix', type=str, default='', help='Prefix for the output files.')
     parser.add_argument('-r', '--redo', default=False, action = 'store_true', help='Will redo analysis. \
                         Be aware that output files will be overwritten.')
-    parser.add_argument('-q', '--quiet', default=False, action = 'store_true', help='Quiet mode, will outout minimal information on your screen.')
+    parser.add_argument('-q', '--quiet', default=False, action = 'store_true', help='Quiet mode, will output minimal information on your screen.')
     parser.add_argument('--cores', default=1, action='store', type=int, help='For parallellized searching. Declares the number of cores to us. \
                         Default is 1.')
     args = parser.parse_args()

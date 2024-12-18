@@ -44,7 +44,7 @@ class Query:
         Compares a word with the reference word (candidate) found in the NCBI taxonomy database. 
         Calculates the fuzzy ratio between the word and candidate as well as the original name
         self.name, the reduced named self.red_name as well as the minimal name self.min_name. 
-        Returns the highest fuzzy ratio score found.
+        Returns the the fuzzy ratio scores as a list.
         """
 
         candidate = candidate.upper()
