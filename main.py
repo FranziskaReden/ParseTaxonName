@@ -14,8 +14,8 @@ def main():
     '''
 
     parser = argparse.ArgumentParser(description='**Script to retrieve taxon ID according \
-                            to te NCBI taxonomy given a taxon name and/or to \
-                            retrieve the lineage of said/a taxon ID.**')
+to te NCBI taxonomy given a taxon name and/or to \
+retrieve the lineage of said/a taxon ID.**')
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('-n', '--taxon_name', type=str, action='store', nargs='+',
                     help='Taxon name for which to find the taxon ID')
@@ -57,7 +57,7 @@ def main():
     parser.add_argument('-db', default=str(os.path.join(os.environ.get("HOME"), ".ncbi_tax")),
                         action='store',
                         help='Path to and name of the folder in which to write/find the \
-                            NCBI taxonomy database. Default is the older ".ncbi_tax" in \
+                            NCBI taxonomy database. Default is the folder ".ncbi_tax" in \
                             the home directory of the current user.')
     parser.add_argument('--update', default=False, action='store_true',
                         help='Will update NCBI taxonomy database (will be downloaded).')
@@ -65,9 +65,9 @@ def main():
 
     if args.score > 100 or args.score < 60:
         print('Please choose a score value between 60 and 100! \
-              I do not recommend going below 90%.\n \
-              Please, also note that a value of 100 in relaxed \
-              mode equals strict mode (which is more efficient).\n')
+I do not recommend going below 90%.\n \
+Please, also note that a value of 100 in relaxed \
+mode equals strict mode (which is more efficient).\n')
         sys.exit(2)
 
     print(parser.description, '\n')
@@ -88,9 +88,9 @@ def main():
         search_name.get_taxids(args)
 
     elif os.path.isfile(args.prefix+'lineage.tsv') and args.redo is False:
-        print('Output file '+args.prefix+'_lineage.tsv detetced. Nothing to do... \
-              \nUse the --redo flag should you wish to rerun the analysis, \
-              which will overwrite the results file.\n')
+        print('Output file '+args.prefix+'_lineage.tsv detetced. Nothing to do...')
+        print('Use the --redo flag should you wish to rerun the analysis, ')
+        print('which will overwrite the results file.')
 
     else:
         get_lineage.get_lineage(args)

@@ -34,7 +34,7 @@ def sort_taxa_names(folder:pathlib.Path) -> pd.DataFrame:
     taxa_df = pd.DataFrame(taxa, columns=header)
     taxa_df.to_csv(os.path.join(folder, 'taxa_names_sorted.tsv'), sep='\t', index=False)
     print('The DataFrame containing the sorted taxon names and taxon IDs \
-          were written into file: '+os.path.join(folder, 'taxa_names_sorted.tsv')+'.\n')
+were written into file: '+os.path.join(folder, 'taxa_names_sorted.tsv')+'.\n')
 
     return taxa_df
 

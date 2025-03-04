@@ -256,9 +256,9 @@ def setup(args, output_files):
 
     return names_to_process, searcher
 
-def index_search(args, results_tupel, searcher, output_files):
+def index_search(args, results_tuple, searcher, output_files):
 
-    failed, tax_ids = results_tupel
+    failed, tax_ids = results_tuple
     failed2 = []
     results = []
     processed_count = 0
@@ -329,7 +329,7 @@ def get_taxids(args):
 
     if len(names_to_process) == 0:
         print(f'0 new names to process were found. Matched and failed names can be found in files \
-              {output_files[0]} and {output_files[1]} repectivly. \
+              {output_files[0]} and {output_files[1]} respectivly. \
               \nUse the --redo flag should you wish to rerun the analysis, which will overwrite the \
               results file.')
         return
