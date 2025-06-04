@@ -275,7 +275,7 @@ def index_search(args, results_tuple, searcher, output_files):
     args_list = [(name, args.mode, searcher) for name in failed]
     if not args.quiet:
         print("name\ttax_id\tname_txt\tname_class\tstrict_score\t"
-              "relaxed_score\treduced_name\tmin_name\ttime(s)")
+"relaxed_score\treduced_name\tmin_name\ttime(s)")
 
     with pool:
         for result in tqdm(pool.imap(process_name, args_list),
@@ -329,9 +329,9 @@ def get_taxids(args):
 
     if len(names_to_process) == 0:
         print(f'0 new names to process were found. Matched and failed names can be found in files \
-              {output_files[0]} and {output_files[1]} respectivly. \
-              \nUse the --redo flag should you wish to rerun the analysis, which will overwrite the \
-              results file.')
+{output_files[0]} and {output_files[1]} respectivly. \
+\nUse the --redo flag should you wish to rerun the analysis, which will overwrite the \
+results file.')
         return
 
     failed, tax_ids = dict_search(names_to_process, searcher,

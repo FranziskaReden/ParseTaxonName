@@ -75,7 +75,7 @@ def get_lineage(args):
     # Setup
     nodes_df = ncbi_tax.get_nodes(args.db)
     output_file = args.prefix+'lineage.tsv'
-    reduced_ranks = ['superkingdom', 'kingdom', 'subkingdom', 'superphylum', 
+    reduced_ranks = ['domain', 'kingdom', 'subkingdom', 'superphylum', 
                      'subphylum', 'phylum', 'superclass', 'class', 'subclass', 
                      'infraclass', 'cohort', 'subcohort', 'superorder', 'order', 
                      'suborder', 'infraorder', 'parvorder', 'superfamily', 'family', 
@@ -83,9 +83,9 @@ def get_lineage(args):
                      'species', 'subspecies', 'tribe', 'subtribe', 'forma', 'varietas', 
                      'strain', 'section', 'subsection', 'pathogroup', 'subvariety', 
                      'genotype', 'serotype', 'isolate', 'morph', 'series', 
-                     'forma specialis', 'serogroup', 'biotype']
+                     'forma specialis', 'serogroup', 'biotype', 'acellular_root', 'cellular_root']
     minimal_ranks = ['species', 'genus', 'family', 'order', 'class',
-        'phylum', 'kingdom', 'superkingdom']
+        'phylum', 'kingdom', 'domain']
 
     tax_ids = []
 
