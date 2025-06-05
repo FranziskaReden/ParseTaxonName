@@ -13,6 +13,7 @@ class Query:
         self.original = name
         self.name = utils.tidy_name(name.replace('_', ' '))
         self.red_name = None
+        self.no_numbers = None
         self.min_name = None
         self.tax_id = None
         self.name_txt = None
@@ -26,6 +27,7 @@ class Query:
         print('original', self.original)
         print('name', self.name)
         print('red_name', self.red_name)
+        print('no_numbers', self.no_numbers)
         print('min_name', self.min_name)
         print('tax_id', self.tax_id)
         print('name_txt', self.name_txt)
@@ -51,11 +53,13 @@ class Query:
         candidate = candidate.upper()
         word = word.upper()
 
-        scores = [fuzz.ratio(candidate, self.name.upper()), 0, 0, fuzz.ratio(candidate, word)]
+        scores = [fuzz.ratio(candidate, self.name.upper()), 0, 0, 0, fuzz.ratio(candidate, word)]
         if self.red_name:
             scores[1] = fuzz.ratio(candidate, self.red_name.upper())
+        if self.no_numbers:
+            scores[2] = fuzz.ratio(candidate, self.no_numbers.upper())
         if self.min_name:
-            scores[2] = fuzz.ratio(candidate, self.min_name.upper())
+            scores[3] = fuzz.ratio(candidate, self.min_name.upper())
 
         return scores
 
@@ -96,7 +100,6 @@ class Query:
         # Check if the new name is long enough
         if len(new_name)>=3:
             self.red_name = new_name
-
         else:
             self.red_name = self.name
 
@@ -108,6 +111,7 @@ class Query:
         # Check if second new name is fferent and long enough
         if len(new_name2) >= 3 and new_name2 != self.red_name:
             self.min_name = new_name2
+            self.no_numbers = new_name2
 
 class TaxonomySearcher:
     taxa_df = None  # Class-level variable
@@ -140,8 +144,8 @@ class TaxonomySearcher:
     def search_approximate(self, query, subset, word):
         matching_indices = subset[subset['name_txt'].str.contains(word, case=False,
                             na=False, regex=False)].index
-        best_scores = [0, 0, 0, 0]
-        best_candidates = [None, None, None, None]
+        best_scores = [0, 0, 0, 0, 0]
+        best_candidates = [None, None, None, None, None]
 
         for idx in matching_indices:
             candidate = subset.at[idx, 'name_txt']
@@ -149,12 +153,12 @@ class TaxonomySearcher:
                 for v in ['VIRAL', 'VIRUS', 'VIRIDAE', 'PHAGE', 'BACTERIOPHAGE']):
                 continue
             scores = query.get_score(word, candidate)
-            for i in range(4):
+            for i in range(len(scores)):
                 if scores[i] > self.limit and scores[i] > best_scores[i]:
                     best_scores[i] = scores[i]
                     best_candidates[i] = idx
 
-        for i in range(4):
+        for i in range(len(best_candidates)):
             if best_candidates[i] is not None:
                 query.update(self.taxa_df.iloc[best_candidates[i]].to_numpy(), best_scores[i])
                 break
@@ -206,6 +210,8 @@ def start_search(q:Query, searcher:TaxonomySearcher, mode:str):
             searcher.search_approximate(q, subset, q.min_name)
             if q.tax_id:
                 break
+            # Set temp name to the name before shaving (for keeping score)
+            q.no_numbers = q.min_name
             q.min_name = utils.shave_name(q.min_name)
 
 def process_name(args):
@@ -217,7 +223,7 @@ def process_name(args):
 
     if query.tax_id:
         result = (f"{query.original}\t{query.tax_id}\t{query.name_txt}\t{query.name_class}\t"
-                  f"{query.strict_score}\t{query.relaxed_score}\t{query.red_name}\t"
+                  f"{query.strict_score}\t{query.relaxed_score}\t{query.red_name}\t{query.no_numbers}\t"
                   f"{query.min_name}\t{query.time}")
         return query.tax_id, result
 
@@ -275,7 +281,7 @@ def index_search(args, results_tuple, searcher, output_files):
     args_list = [(name, args.mode, searcher) for name in failed]
     if not args.quiet:
         print("name\ttax_id\tname_txt\tname_class\tstrict_score\t"
-"relaxed_score\treduced_name\tmin_name\ttime(s)")
+"relaxed_score\treduced_name\tno_number_name\tmin_name\ttime(s)")
 
     with pool:
         for result in tqdm(pool.imap(process_name, args_list),

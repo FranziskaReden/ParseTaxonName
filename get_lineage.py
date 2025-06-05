@@ -83,7 +83,7 @@ def get_lineage(args):
                      'species', 'subspecies', 'tribe', 'subtribe', 'forma', 'varietas', 
                      'strain', 'section', 'subsection', 'pathogroup', 'subvariety', 
                      'genotype', 'serotype', 'isolate', 'morph', 'series', 
-                     'forma specialis', 'serogroup', 'biotype', 'acellular_root', 'cellular_root']
+                     'forma specialis', 'serogroup', 'biotype', 'acellular_root', ]
     minimal_ranks = ['species', 'genus', 'family', 'order', 'class',
         'phylum', 'kingdom', 'domain']
 
