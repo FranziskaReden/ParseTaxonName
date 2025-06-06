@@ -2,6 +2,7 @@ import os
 from datetime import datetime
 from tqdm import tqdm
 import pandas as pd
+from collections import Counter
 
 import utils
 import ncbi_tax
@@ -96,19 +97,20 @@ def get_lineage(args):
 
     if args.redo or not os.path.exists(output_file):
         with open(output_file, 'w', encoding='utf-8') as w:
-            w.write('tax_id\tlineage\n')
+            w.write('tax_id\tquantity\tlineage\n')
 
     with open(output_file, 'a', encoding='utf-8') as w:
 
         now = str(datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
         print(f'\n{now}: Retrieving lineages ({args.lineage})....')
+        
+        unique_tax_ids = Counter(tax_ids)
 
-        for tax_id in tqdm(tax_ids, disable=not args.quiet):
+        for tax_id, count in tqdm(unique_tax_ids.items(), disable=not args.quiet):
             lineage = search_nodes(tax_id, nodes_df, [reduced_ranks, minimal_ranks], args.lineage)
-            line = str(tax_id)+'\t'
+            line = f'{tax_id}\t{count}\t'
             for lin in lineage:
-                line += lin
-                line += ';'
+                line += f'{lin};'
             w.write(line+'\n')
 
             if not args.quiet:
