@@ -7,6 +7,9 @@ import urllib.request
 import pathlib
 from datetime import datetime
 import pandas as pd
+from collections import defaultdict
+import json
+from tqdm import tqdm
 
 import utils
 
@@ -95,6 +98,22 @@ def read_indices(file:pathlib.Path) -> dict:
     return list_index
 
 def get_nodes_file(folder:pathlib.Path, names:pd.DataFrame) -> pd.DataFrame:
+    '''
+    Function to get the nodes DataFrame from the NCBI taxonomy database.
+    Writes nodes.tsv file.
+
+    Parameters
+    ----------
+    folder : str
+        Path to folder in which to write the nodes.tsv file.
+    names : pd.DataFrame
+        DataFrame holding the taxa names and tax IDs.
+
+    Returns
+    ----------
+    nodes_df : pd.DataFrame
+        DataFrame holding the nodes of the NCBI taxonomy database.
+    '''
 
     nodes_file = os.path.join(os.path.join(folder, 'taxdmp'), 'nodes.dmp')
 
@@ -130,6 +149,16 @@ def get_nodes_file(folder:pathlib.Path, names:pd.DataFrame) -> pd.DataFrame:
     return nodes_df
 
 def get_dumpfile(folder, timeout=540) -> None:
+    '''
+    Function to download the taxdmp.zip file from the NCBI taxonomy database.
+
+    Parameters
+    ----------
+    folder : str
+        Path to folder in which to write the taxdmp.zip file.
+    timeout : int
+        Timeout in seconds for downloading the file. Default is 540 seconds.
+    '''
 
     print('Downloading taxdmp.zip file from the NCBI taxonomy database...\n')
     url = 'https://ftp.ncbi.nih.gov/pub/taxonomy/taxdmp.zip'
@@ -149,6 +178,22 @@ def get_dumpfile(folder, timeout=540) -> None:
         w.write(f'NCBI taxonomy last downloaded and updated on: {date}.\n')
 
 def get_taxa(folder:str) -> list:
+    '''
+    Function to get the taxa DataFrame and the lexicon from the NCBI taxonomy database
+    If taxa_names_sorted.tsv and taxa_indeces.txt files do not exist, they will be created.
+
+    Parameters
+    ----------
+    folder : str
+        Path to folder in which to find/write the NCBI taxonomy database files.
+
+    Returns
+    ----------
+    taxa : pd.DataFrame
+        DataFrame holding the taxa names and tax IDs.
+    list_index : dict
+        Dictionary holding the lexicon for the taxa DataFrame.
+    '''
 
     if os.path.isdir(folder) is False:
         os.mkdir(folder)
@@ -172,6 +217,20 @@ def get_taxa(folder:str) -> list:
     return taxa, list_index
 
 def get_nodes(folder:str) -> pd.DataFrame:
+    '''
+    Function to get the nodes DataFrame from the NCBI taxonomy database.
+    If nodes.tsv file does not exist, it will be created.
+
+    Parameters
+    ----------
+    folder : str
+        Path to folder in which to find/write the nodes.tsv file.
+
+    Returns
+    ----------
+    nodes_df : pd.DataFrame
+        DataFrame holding the nodes of the NCBI taxonomy database.
+    '''
 
     if os.path.exists(os.path.join(folder, 'nodes.tsv')) is False:
         taxa, list_index = get_taxa(folder)
@@ -184,7 +243,68 @@ def get_nodes(folder:str) -> pd.DataFrame:
 
     return nodes_df
 
+def get_homonyms_file(folder:str, taxa:pd.DataFrame) -> list:
+    '''
+    Function to get all homonyms in the taxa DataFrame.	
+    Writes homonyms into a json file.
+
+    Parameters
+    ----------
+    folder : str
+        Path to folder in which to write the homonyms file.
+    taxa : pd.DataFrame
+        DataFrame holding the taxa names and tax IDs.
+    '''
+
+    homonyms_file = os.path.join(folder, 'homonyms.json')
+
+    homonyms = defaultdict(list)
+    for idx, row in tqdm(taxa.iterrows(), total=len(taxa)): 
+        homonyms[row['name_txt']].append(idx)
+        # If we encounter a homonym, set dup column ccordingly
+        if len(homonyms[row['name_txt']]) > 1:
+            for idx in homonyms[row['name_txt']]:
+                taxa.at[idx, 'dup'] = 1
+
+    # keep only duplicates
+    duplicates_dict = {name: ids for name, ids in homonyms.items() if len(ids) > 1}
+
+    with open(homonyms_file, "w") as f:
+        json.dump(duplicates_dict, f, indent=4)
+    print('Homonyms were written into file '+homonyms_file+'.')
+
+    return
+
+def add_dup_to_taxa(folder:str, taxa_df:pd.DataFrame):
+    '''
+    Function to add a 'dup' column to the taxa DataFrame.
+
+    Parameters
+    ----------
+    folder : str
+        Path to folder in which to write the updated taxa DataFrame.
+    taxa_df : pd.DataFrame
+        DataFrame holding the taxa names and tax IDs.
+    '''
+
+    if 'dup' in taxa_df.columns:
+        return
+    
+    taxa_df['dup'] = 0
+    get_homonyms_file(folder, taxa_df)       
+    
+    taxa_df.to_csv(os.path.join(folder, 'taxa_names_sorted.tsv'), sep='\t', index=False)
+    return
+
 def update_db(folder: str):
+    '''
+    Function to update the NCBI taxonomy database.
+
+    Parameters
+    ----------
+    folder : str
+        Path to folder in which to write/find the NCBI taxonomy database files.
+    '''
 
     if os.path.isdir(folder) is False:
         os.mkdir(folder)
@@ -194,4 +314,6 @@ def update_db(folder: str):
                           extract_dir=os.path.join(folder, 'taxdmp'))
     taxa = sort_taxa_names(folder)
     list_index = get_indeces(folder, taxa)
-    nodes_df = get_nodes_file(folder, taxa[taxa['name class'] == 'scientific name'])
+    nodes_df = get_nodes_file(folder, taxa)
+    add_dup_to_taxa(folder, taxa)
+

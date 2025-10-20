@@ -6,5 +6,5 @@ dependencies:
   - python=3.11 
   - pandas
   - tqdm
-  - fuzzywuzzy
-  - python-levenshtein  # optional but speeds up fuzzywuzzy
+  - rapidfuzz
+  - python-levenshtein

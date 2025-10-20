@@ -9,7 +9,8 @@ def shave_name(word:str) -> str | None:
     split_word = word.split(' ')
 
     if word and len(split_word) > 1:
-        new_name = word.replace(' '+split_word[-1], '')
+        split_word.remove(split_word[-1])
+        new_name = rejoin_name(split_word)
         if len(new_name) >= 3:
             return new_name
 
@@ -47,12 +48,13 @@ def tidy_name2(original_name:str) -> str:
         original_name = original_name.split('_ex_')[0]
 
     original_name = original_name.replace('_', ' ')
-    original_name = original_name.replace('[', ' ')
-    original_name = original_name.replace(']', ' ')
+    if original_name[0] != '[':
+        original_name = original_name.replace('[', '(')
+        original_name = original_name.replace(']', ')')
 
     if original_name.count('.') > 1:
         original_name = original_name.replace('.', ' ')
-    if '-' in original_name:
+    if original_name.count('-') > 1:
         original_name = original_name.replace('-', ' ')
 
     return original_name
@@ -61,6 +63,11 @@ def has_number(word:str) -> bool:
     '''Function to check if any character in a given string (word) 
     is numeric. Retruns True or False accordingly'''
     return any(str.isnumeric(c) for c in word)
+
+def rejoin_name(name_sep:list) -> str:
+
+    new_name = " ".join(name_sep)
+    return tidy_name(new_name)
 
 def find_trash_words(name_sep:list) -> list:
     '''Check each word in the input list of strings name_sep. 
@@ -170,7 +177,7 @@ def load_checkpoint(file_path, redo):
     else:
         with open(checkpoint_path, "w", encoding='utf-8') as w:
             w.write("name\ttax_id\tname_txt\tname_class\tstrict_score\t"
-            "relaxed_score\treduced_name\tmin_name\ttime(s)\n")
+            "relaxed_score\treduced_name\ttmp_name\tmin_name\ttime(s)\n")
 
     if os.path.exists(failed_path) and not redo:
         with open(failed_path, "r", encoding='utf-8') as f:

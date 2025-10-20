@@ -1,13 +1,14 @@
 import time
 import multiprocessing
 from tqdm import tqdm
-from fuzzywuzzy import fuzz
+import rapidfuzz as fuzz
 
 import get_lineage
 import utils
 import ncbi_tax
 
 class Query:
+    '''Class to hold information about a taxon name query.'''
 
     def __init__(self, name):
         self.original = name
@@ -36,6 +37,7 @@ class Query:
         print('relaxed_score', self.relaxed_score)
 
     def update(self, row, score=0):
+        '''Function to update the Query instance with found taxon information.'''
         self.tax_id = row[0]
         self.name_txt = row[1]
         self.name_class = row[2]
@@ -93,9 +95,7 @@ class Query:
         # Remove useless words as found in rm1
         for rm in rm1:
             name_sep.remove(rm)
-
-        new_name = " ".join(name_sep)
-        new_name = utils.tidy_name(new_name)
+        new_name = utils.rejoin_name(name_sep)
 
         # Check if the new name is long enough
         if len(new_name)>=3:
@@ -103,10 +103,10 @@ class Query:
         else:
             self.red_name = self.name
 
-        new_name2 = new_name
+        # Remove useless words as found in rm2
         for rm in rm2:
-            new_name2 = new_name2.replace(rm, '')
-        new_name2 = utils.tidy_name(new_name2)
+            name_sep.remove(rm)
+        new_name2 = utils.rejoin_name(name_sep)
 
         # Check if second new name is fferent and long enough
         if len(new_name2) >= 3 and new_name2 != self.red_name:
@@ -114,6 +114,8 @@ class Query:
             self.no_numbers = new_name2
 
 class TaxonomySearcher:
+    '''Class to search for taxon names in the NCBI taxonomy database.'''
+
     taxa_df = None  # Class-level variable
     list_index = None
     taxa_name_dict = None
@@ -121,6 +123,7 @@ class TaxonomySearcher:
 
     @classmethod
     def initialize(cls, taxa_df, list_index, taxa_name_dict, limit):
+        '''Class method to initialize class-level variables.'''	
         cls.taxa_df = taxa_df
         cls.list_index = list_index
         cls.taxa_name_dict = taxa_name_dict
@@ -130,6 +133,10 @@ class TaxonomySearcher:
         self.name = name
 
     def get_subset(self, letter):
+        '''
+        Function to get the subset of taxa starting with a given letter.	
+        Returns DataFrame subset.
+        '''
         if letter in self.list_index:
             limits = self.list_index[letter]
         else:
@@ -137,9 +144,14 @@ class TaxonomySearcher:
         return self.taxa_df.iloc[limits[0]:limits[1]]
 
     def search_exact(self, query):
+        '''
+        Function to search for exact matches of a given Query instance.	
+        Returns None, updates the Query instance.
+        '''
         if query.name in self.taxa_name_dict:
             idx = self.taxa_name_dict[query.name]
-            query.update(self.taxa_df.iloc[idx].to_numpy())
+            if self.taxa_df.at[idx, 'dup'] == 0:
+                query.update(self.taxa_df.iloc[idx].to_numpy())
 
     def search_approximate(self, query, subset, word):
         matching_indices = subset[subset['name_txt'].str.contains(word, case=False,
@@ -160,15 +172,29 @@ class TaxonomySearcher:
 
         for i in range(len(best_candidates)):
             if best_candidates[i] is not None:
-                query.update(self.taxa_df.iloc[best_candidates[i]].to_numpy(), best_scores[i])
+                if self.taxa_df.at[best_candidates[i], 'dup'] == 0:
+                    query.update(self.taxa_df.iloc[best_candidates[i]].to_numpy(), best_scores[i])
                 break
 
 def start_search(q:Query, searcher:TaxonomySearcher, mode:str):
+    '''Function to start the search for a given Query instance.	
+    Returns None, updates the Query instance.
+
+    Parameters
+    ----------
+    q : Query
+        Query instance holding the name to search for and other information.
+    searcher : TaxonomySearcher
+        TaxonomySearcher instance to perform the search.
+    mode : str
+        States whether to perform strict, relaxed or lenient search.
+    '''
 
     if mode == 'strict':
         searcher.search_exact(q)
         return
 
+    # relaxed and lenient search: Get subset according to first letter
     first_letter = q.name[0].upper()
     subset = searcher.get_subset(first_letter)
 
@@ -215,12 +241,24 @@ def start_search(q:Query, searcher:TaxonomySearcher, mode:str):
             q.min_name = utils.shave_name(q.min_name)
 
 def process_name(args):
+    '''
+    Function to process a single name.
+    Returns tax_id and result string if found, else None and original name.
+    '''
+
+    # Unpack arguments
     name, mode, searcher = args
+    # Create Query instance
     query = Query(name)
+
+    # Start timer
     start = time.time()
+    # Perform search
     start_search(query, searcher, mode)
+    # End timer
     query.time = round(time.time() - start, 5)
 
+    # Prepare result
     if query.tax_id:
         result = (f"{query.original}\t{query.tax_id}\t{query.name_txt}\t{query.name_class}\t"
                   f"{query.strict_score}\t{query.relaxed_score}\t{query.red_name}\t{query.no_numbers}\t"
@@ -230,10 +268,16 @@ def process_name(args):
     return None, query.original
 
 def setup(args, output_files):
+    '''
+    Function to set up the names to process and the TaxonomySearcher class.
+    Returns the names to process and the TaxonomySearcher instance.
+    '''
 
     taxa_df, list_index = ncbi_tax.get_taxa(args.db)
     taxa_name_dict = dict(zip(taxa_df['name_txt'].values, taxa_df.index))
+    ncbi_tax.add_dup_to_taxa(args.db, taxa_df)
 
+    # Initialize the TaxonomySearcher class
     TaxonomySearcher.initialize(taxa_df, list_index, taxa_name_dict, args.score)
     searcher = TaxonomySearcher('ncbi')
 
@@ -284,6 +328,7 @@ def index_search(args, results_tuple, searcher, output_files):
 "relaxed_score\treduced_name\tno_number_name\tmin_name\ttime(s)")
 
     with pool:
+        # Process names in parallel
         for result in tqdm(pool.imap(process_name, args_list),
                             total=len(failed), disable=not args.quiet):
             processed_count += 1
@@ -292,7 +337,7 @@ def index_search(args, results_tuple, searcher, output_files):
                 failed2.append(result[1])  # Collect failed2 names
             else:
                 results.append(result[1])
-                tax_ids.append(int(result[0]))
+                tax_ids.append(int(result[0])) # Collect tax_ids
 
                 if not args.quiet:
                     print(result[1])
@@ -324,15 +369,21 @@ def dict_search(names_to_process, searcher, output_files, quiet = False):
     # Checkpoint save
     utils.write_checkpoint(output_files, results, failed,
                            len(results), mode = False, quiet=quiet)
+    
+    # Clear the taxa_name_dict to free up memory
     searcher.taxa_name_dict.clear()
 
     return failed, tax_ids
 
 def get_taxids(args):
 
+    # Declare output files
     output_files = args.prefix + "tax_ids.tsv", args.prefix + 'tax_ids_failed.txt'
+
+    # Set up names to process and searcher
     names_to_process, searcher = setup(args, output_files)
 
+    # Check if there are names to process
     if len(names_to_process) == 0:
         print(f'0 new names to process were found. Matched and failed names can be found in files \
 {output_files[0]} and {output_files[1]} respectivly. \
@@ -340,6 +391,7 @@ def get_taxids(args):
 results file.')
         return
 
+    # Exact search
     failed, tax_ids = dict_search(names_to_process, searcher,
                                 output_files, quiet=args.quiet)
 
@@ -348,6 +400,8 @@ results file.')
         tax_ids = index_search(args, [failed, tax_ids], searcher, output_files)
 
     print(f"Matched names written to {output_files[0]}. Failed names to {output_files[1]}.")
+
+    # If we have tax_ids, get lineages
     if tax_ids:
         args.tax_id = tax_ids
         get_lineage.get_lineage(args)

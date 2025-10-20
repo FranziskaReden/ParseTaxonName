@@ -15,7 +15,7 @@ class TestFerLineage(unittest.TestCase):
 
         nodes_df = ncbi_tax.get_nodes(folder)
 
-        reduced_ranks = ['superkingdom', 'genus', 'species', 'order', 'family',
+        reduced_ranks = ['domain', 'genus', 'species', 'order', 'family',
        'subspecies', 'subfamily', 'strain', 'serogroup', 'tribe',
        'phylum', 'class', 'species group', 'forma', 'subphylum',
        'suborder', 'subclass', 'varietas', 'kingdom', 'forma specialis',
@@ -23,7 +23,7 @@ class TestFerLineage(unittest.TestCase):
        'subgenus', 'superclass', 'parvorder', 'serotype',
        'species subgroup', 'subcohort', 'cohort', 'subtribe', 'section',
        'series', 'subkingdom', 'superphylum', 'subsection']
-        minimal_ranks = ['species', 'genus', 'family', 'order', 'class', 'phylum', 'kingdom', 'superkingdom']
+        minimal_ranks = ['species', 'genus', 'family', 'order', 'class', 'phylum', 'kingdom', 'domain']
 
         tax_id = 9606
 
