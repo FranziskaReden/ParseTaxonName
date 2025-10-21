@@ -25,6 +25,7 @@ The search strategy ensures that at least the **genus component** of a name matc
 | File | Description |
 |------|-------------|
 | **find_taxon_ids.py** | Main driver script. Handles input, runs multi-stage name matching, manages multiprocessing, and writes results and checkpoints. |
+| **search_name.py** | Contains the classes and functions for searching and matching taxon names against the NCBI taxonomy database. |
 | **get_lineage.py** | Retrieves full NCBI lineages for matched Taxonomy IDs and appends them to the results file. |
 | **ncbi_tax.py** | Loads and preprocesses NCBI taxonomy data (`names.dmp`, `nodes.dmp`), builds internal indices by starting letter, and flags duplicate taxon names. |
 | **utils.py** | Contains helper functions for name cleanup, I/O handling, checkpointing, and text normalization. |
@@ -112,7 +113,7 @@ Escherichia imaginarus  561     Escherichia     nan     66.667  100.0   Escheric
 Checkpoint saved: 4 names processed.
 
 Matched names written to tax_ids.tsv. Failed names to tax_ids_failed.txt.
-Reading in /home/frareden/.ncbi_tax/nodes.tsv file...
+Reading in /PATH/TO/DB/nodes.tsv file...
 
 20/10/2025 16:41:49: Retrieving lineages (minimal)....
 1498384 1       root:1;cellular organisms:131567;Eukaryota:2759;Metazoa:33208;Arthropoda:6656;Arachnida:6854;Araneae:6893;Oonopidae:1498386;Unicorn:1498384;
@@ -155,7 +156,7 @@ After matching TaxIDs, the script reads the local nodes data and writes lineage 
 
 **`lineage.tsv`**
 
-- Contains tax_id, rank, and the lineage string (semicolon-separated rank:name pairs). Format depends on lineage_mode (minimal vs full).
+- Contains tax_id, rank, and the lineage string (semicolon-separated name:TaxID pairs). Format depends on lineage_mode (minimal vs full).
 
 
 
