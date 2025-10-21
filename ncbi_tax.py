@@ -243,7 +243,7 @@ def get_nodes(folder:str) -> pd.DataFrame:
 
     return nodes_df
 
-def get_homonyms_file(folder:str, taxa:pd.DataFrame) -> list:
+def get_homonyms_file(folder:str, taxa:pd.DataFrame, redo = False) -> list:
     '''
     Function to get all homonyms in the taxa DataFrame.	
     Writes homonyms into a json file.
@@ -257,6 +257,11 @@ def get_homonyms_file(folder:str, taxa:pd.DataFrame) -> list:
     '''
 
     homonyms_file = os.path.join(folder, 'homonyms.json')
+
+    if os.path.exists(homonyms_file) and redo is False:
+        with open(homonyms_file, "r") as file:
+            duplicates_dict = json.load(file)
+        return duplicates_dict
 
     homonyms = defaultdict(list)
     for idx, row in tqdm(taxa.iterrows(), total=len(taxa)): 
@@ -273,7 +278,7 @@ def get_homonyms_file(folder:str, taxa:pd.DataFrame) -> list:
         json.dump(duplicates_dict, f, indent=4)
     print('Homonyms were written into file '+homonyms_file+'.')
 
-    return
+    return duplicates_dict
 
 def add_dup_to_taxa(folder:str, taxa_df:pd.DataFrame):
     '''
@@ -291,7 +296,7 @@ def add_dup_to_taxa(folder:str, taxa_df:pd.DataFrame):
         return
     
     taxa_df['dup'] = 0
-    get_homonyms_file(folder, taxa_df)       
+    _ = get_homonyms_file(folder, taxa_df, redo = True)       
     
     taxa_df.to_csv(os.path.join(folder, 'taxa_names_sorted.tsv'), sep='\t', index=False)
     return

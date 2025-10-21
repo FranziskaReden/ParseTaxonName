@@ -1,7 +1,7 @@
 import time
 import multiprocessing
 from tqdm import tqdm
-import rapidfuzz as fuzz
+from rapidfuzz import fuzz
 
 import get_lineage
 import utils
@@ -23,6 +23,7 @@ class Query:
         self.strict_score = 0
         self.relaxed_score = 0
         self.time = None
+        self.comment = None
 
     def print_info(self):
         print('original', self.original)
@@ -35,14 +36,15 @@ class Query:
         print('name_class', self.name_class)
         print('strict_score', self.strict_score)
         print('relaxed_score', self.relaxed_score)
+        print('comment', self.comment)
 
     def update(self, row, score=0):
         '''Function to update the Query instance with found taxon information.'''
         self.tax_id = row[0]
         self.name_txt = row[1]
         self.name_class = row[2]
-        self.relaxed_score = score
-        self.strict_score = fuzz.ratio(self.name, self.name_txt)
+        self.relaxed_score = round(score, 3)
+        self.strict_score = round(fuzz.ratio(self.name, self.name_txt), 3)
 
     def get_score(self, word:str, candidate:str) -> float:
         """
@@ -69,7 +71,7 @@ class Query:
         """
         Tidy up the name (self.name) by omitting some words and replacing others. 
         E.g. 'cf' -> 'cf.', removing all words containing a number, etc. 
-        Sets self.red_name (tidied up name) and self.min_name (no numbers) if 
+        Sets self.red_name (tidied up name) and self.no_numbers (no numbers) if 
         they are different from self.name.
         """
 
@@ -108,7 +110,7 @@ class Query:
             name_sep.remove(rm)
         new_name2 = utils.rejoin_name(name_sep)
 
-        # Check if second new name is fferent and long enough
+        # Check if second new name is different and long enough
         if len(new_name2) >= 3 and new_name2 != self.red_name:
             self.min_name = new_name2
             self.no_numbers = new_name2
@@ -119,15 +121,17 @@ class TaxonomySearcher:
     taxa_df = None  # Class-level variable
     list_index = None
     taxa_name_dict = None
+    homonyms_dict = None
     limit = 95
 
     @classmethod
-    def initialize(cls, taxa_df, list_index, taxa_name_dict, limit):
+    def initialize(cls, taxa_df, list_index, taxa_name_dict, homonyms_dict, limit):
         '''Class method to initialize class-level variables.'''	
         cls.taxa_df = taxa_df
         cls.list_index = list_index
         cls.taxa_name_dict = taxa_name_dict
         cls.limit = limit
+        cls.homonyms_dict = homonyms_dict
 
     def __init__(self, name):
         self.name = name
@@ -150,8 +154,14 @@ class TaxonomySearcher:
         '''
         if query.name in self.taxa_name_dict:
             idx = self.taxa_name_dict[query.name]
+            # If not a homonym, update directly
             if self.taxa_df.at[idx, 'dup'] == 0:
                 query.update(self.taxa_df.iloc[idx].to_numpy())
+            # If homonym, add comment
+            else:
+                homonyms_idx = self.homonyms_dict[self.taxa_df.at[idx, 'name_txt']]
+                homonyms = [self.taxa_df.at[i, 'tax_id'] for i in homonyms_idx]
+                query.comment = 'HOMONYM - multiple entries found: {}'.format(', '.join([str(tid) for tid in homonyms]))
 
     def search_approximate(self, query, subset, word):
         matching_indices = subset[subset['name_txt'].str.contains(word, case=False,
@@ -174,6 +184,11 @@ class TaxonomySearcher:
             if best_candidates[i] is not None:
                 if self.taxa_df.at[best_candidates[i], 'dup'] == 0:
                     query.update(self.taxa_df.iloc[best_candidates[i]].to_numpy(), best_scores[i])
+                else:
+                    # If homonym, add comment
+                    homonyms_idx = self.homonyms_dict[self.taxa_df.at[best_candidates[i], 'name_txt']]
+                    homonyms = [self.taxa_df.at[i, 'tax_id'] for i in homonyms_idx]
+                    query.comment = 'HOMONYM - multiple entries found: {}'.format(', '.join([str(tid) for tid in homonyms]))
                 break
 
 def start_search(q:Query, searcher:TaxonomySearcher, mode:str):
@@ -243,7 +258,7 @@ def start_search(q:Query, searcher:TaxonomySearcher, mode:str):
 def process_name(args):
     '''
     Function to process a single name.
-    Returns tax_id and result string if found, else None and original name.
+    Returns tax_id and result string if found, else None and result.
     '''
 
     # Unpack arguments
@@ -258,14 +273,17 @@ def process_name(args):
     # End timer
     query.time = round(time.time() - start, 5)
 
-    # Prepare result
-    if query.tax_id:
-        result = (f"{query.original}\t{query.tax_id}\t{query.name_txt}\t{query.name_class}\t"
+    # Prepare result string
+    result = (f"{query.original}\t{query.tax_id}\t{query.name_txt}\t{query.name_class}\t"
                   f"{query.strict_score}\t{query.relaxed_score}\t{query.red_name}\t{query.no_numbers}\t"
-                  f"{query.min_name}\t{query.time}")
+                  f"{query.min_name}\t{query.time}\t{query.comment}")
+    
+    # If successful, return tax_id and result
+    if query.tax_id:   
         return query.tax_id, result
 
-    return None, query.original
+    # If not successful, return None and result
+    return None, result
 
 def setup(args, output_files):
     '''
@@ -276,9 +294,10 @@ def setup(args, output_files):
     taxa_df, list_index = ncbi_tax.get_taxa(args.db)
     taxa_name_dict = dict(zip(taxa_df['name_txt'].values, taxa_df.index))
     ncbi_tax.add_dup_to_taxa(args.db, taxa_df)
+    homonyms_dict = ncbi_tax.get_homonyms_file(args.db, taxa_df)
 
     # Initialize the TaxonomySearcher class
-    TaxonomySearcher.initialize(taxa_df, list_index, taxa_name_dict, args.score)
+    TaxonomySearcher.initialize(taxa_df, list_index, taxa_name_dict, homonyms_dict, args.score)
     searcher = TaxonomySearcher('ncbi')
 
     processed_names, failed_names = utils.load_checkpoint(output_files, args.redo)
@@ -325,7 +344,7 @@ def index_search(args, results_tuple, searcher, output_files):
     args_list = [(name, args.mode, searcher) for name in failed]
     if not args.quiet:
         print("name\ttax_id\tname_txt\tname_class\tstrict_score\t"
-"relaxed_score\treduced_name\tno_number_name\tmin_name\ttime(s)")
+"relaxed_score\treduced_name\tno_number_name\tmin_name\ttime(s)\tcomment")
 
     with pool:
         # Process names in parallel
@@ -334,13 +353,14 @@ def index_search(args, results_tuple, searcher, output_files):
             processed_count += 1
 
             if result[0] is None:
-                failed2.append(result[1])  # Collect failed2 names
+                failed2.append(result[1].split('\t')[0])  # Collect failed2 names
             else:
-                results.append(result[1])
                 tax_ids.append(int(result[0])) # Collect tax_ids
 
-                if not args.quiet:
-                    print(result[1])
+            results.append(result[1])
+
+            if not args.quiet:
+                print(result[1])
 
             # Periodically save checkpoint
             if processed_count % 500 == 0:
@@ -353,18 +373,25 @@ def index_search(args, results_tuple, searcher, output_files):
     return tax_ids
 
 def dict_search(names_to_process, searcher, output_files, quiet = False):
-
+    '''
+    Function to perform exact dictionary search for taxon names.	
+    Returns failed names and found tax_ids.
+    '''
+    if not quiet:
+        print("name\ttax_id\tname_txt\tname_class\tstrict_score\t"
+"relaxed_score\treduced_name\tno_number_name\tmin_name\ttime(s)\tcomment")
+        
     results, failed, tax_ids = [], [], []
     for name in tqdm(names_to_process, disable=not quiet):
         result = process_name((name, 'strict', searcher))
         if result[0] is None:
-            failed.append(result[1])
+            failed.append(result[1].split('\t')[0])
         else:
             results.append(result[1])
             tax_ids.append(int(result[0]))
 
-            if not quiet:
-                print(result[1])
+        if not quiet:
+            print(result[1])
 
     # Checkpoint save
     utils.write_checkpoint(output_files, results, failed,
@@ -391,15 +418,23 @@ def get_taxids(args):
 results file.')
         return
 
+    if args.quiet is False:
+        print(f'\nStarting exact match search for {len(names_to_process)} names...')
     # Exact search
     failed, tax_ids = dict_search(names_to_process, searcher,
                                 output_files, quiet=args.quiet)
 
     # Approximate or lenient search
     if args.mode != 'strict' and len(failed) > 0:
+        if args.quiet is False:
+            print(f'\nStarting {args.mode} search for {len(failed)} names using {args.cores} cores...')
         tax_ids = index_search(args, [failed, tax_ids], searcher, output_files)
 
-    print(f"Matched names written to {output_files[0]}. Failed names to {output_files[1]}.")
+    else:
+        utils.write_checkpoint(output_files, [], failed, len(failed),
+                         mode=True, quiet=args.quiet)
+
+    print(f"\nMatched names written to {output_files[0]}. Failed names to {output_files[1]}.\n")
 
     # If we have tax_ids, get lineages
     if tax_ids:
